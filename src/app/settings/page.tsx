@@ -1,0 +1,447 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "@/lib/auth-client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
+import { ArrowLeft, RefreshCw, Save, Lock, User, Image, DollarSign } from "lucide-react";
+
+const CURRENCIES = [
+  { code: "USD", name: "US Dollar", symbol: "$" },
+  { code: "EUR", name: "Euro", symbol: "€" },
+  { code: "GBP", name: "British Pound", symbol: "£" },
+  { code: "JPY", name: "Japanese Yen", symbol: "¥" },
+  { code: "IDR", name: "Indonesian Rupiah", symbol: "Rp" },
+  { code: "CAD", name: "Canadian Dollar", symbol: "CA$" },
+  { code: "AUD", name: "Australian Dollar", symbol: "A$" },
+  { code: "CHF", name: "Swiss Franc", symbol: "CHF" },
+  { code: "CNY", name: "Chinese Yuan", symbol: "¥" },
+  { code: "INR", name: "Indian Rupee", symbol: "₹" },
+  { code: "MXN", name: "Mexican Peso", symbol: "MX$" },
+  { code: "BRL", name: "Brazilian Real", symbol: "R$" },
+  { code: "ZAR", name: "South African Rand", symbol: "R" },
+  { code: "SEK", name: "Swedish Krona", symbol: "kr" },
+  { code: "SGD", name: "Singapore Dollar", symbol: "S$" },
+  { code: "HKD", name: "Hong Kong Dollar", symbol: "HK$" },
+  { code: "KRW", name: "South Korean Won", symbol: "₩" },
+  { code: "MYR", name: "Malaysian Ringgit", symbol: "RM" },
+  { code: "THB", name: "Thai Baht", symbol: "฿" },
+  { code: "PHP", name: "Philippine Peso", symbol: "₱" },
+];
+
+interface ProfileData {
+  id: string;
+  name: string;
+  email: string;
+  image: string | null;
+  currency: string;
+}
+
+export default function SettingsPage() {
+  const router = useRouter();
+  const { data: session, isPending, refetch } = useSession();
+  
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  
+  // Profile form state
+  const [name, setName] = useState("");
+  const [image, setImage] = useState("");
+  const [currency, setCurrency] = useState("USD");
+  
+  // Password form state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+
+  // Protect route
+  useEffect(() => {
+    if (!isPending && !session?.user) {
+      router.push("/login");
+    }
+  }, [session, isPending, router]);
+
+  // Fetch profile data
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("bearer_token");
+      const response = await fetch("/api/profile", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) throw new Error("Failed to fetch profile");
+      
+      const data = await response.json();
+      setProfile(data);
+      setName(data.name);
+      setImage(data.image || "");
+      setCurrency(data.currency);
+    } catch (error) {
+      toast.error("Failed to load profile");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (session?.user) {
+      fetchProfile();
+    }
+  }, [session]);
+
+  // Update profile
+  const handleUpdateProfile = async () => {
+    try {
+      setSaving(true);
+      const token = localStorage.getItem("bearer_token");
+      
+      const updates: { name?: string; image?: string | null; currency?: string } = {};
+      
+      if (name !== profile?.name) updates.name = name;
+      if (image !== (profile?.image || "")) {
+        updates.image = image.trim() === "" ? null : image;
+      }
+      if (currency !== profile?.currency) updates.currency = currency;
+      
+      if (Object.keys(updates).length === 0) {
+        toast.info("No changes to save");
+        return;
+      }
+      
+      const response = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updates),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update profile");
+      }
+      
+      const updatedProfile = await response.json();
+      setProfile(updatedProfile);
+      await refetch(); // Refresh session to update user data in header
+      toast.success("Profile updated successfully");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update profile");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Update password
+  const handleUpdatePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error("All password fields are required");
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      toast.error("New passwords do not match");
+      return;
+    }
+    
+    if (newPassword.length < 8) {
+      toast.error("New password must be at least 8 characters");
+      return;
+    }
+    
+    try {
+      setSavingPassword(true);
+      const token = localStorage.getItem("bearer_token");
+      
+      const response = await fetch("/api/profile/password", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update password");
+      }
+      
+      toast.success("Password updated successfully");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update password");
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  if (isPending || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <RefreshCw className="h-12 w-12 animate-spin mx-auto text-muted-foreground" />
+          <p className="text-muted-foreground">Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session?.user || !profile) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Toaster />
+      <div className="container mx-auto p-6 max-w-4xl space-y-8">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => router.push("/")}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight">Settings</h1>
+            <p className="text-muted-foreground mt-2">
+              Manage your account settings and preferences
+            </p>
+          </div>
+        </div>
+
+        {/* Profile Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Profile Information
+            </CardTitle>
+            <CardDescription>
+              Update your name and profile picture
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your name"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                value={profile.email}
+                disabled
+                className="bg-muted"
+              />
+              <p className="text-xs text-muted-foreground">
+                Email cannot be changed
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="image" className="flex items-center gap-2">
+                <Image className="h-4 w-4" />
+                Profile Picture URL
+              </Label>
+              <Input
+                id="image"
+                value={image}
+                onChange={(e) => setImage(e.target.value)}
+                placeholder="https://example.com/profile.jpg"
+              />
+              {image && (
+                <div className="mt-2">
+                  <img
+                    src={image}
+                    alt="Profile preview"
+                    className="h-20 w-20 rounded-full object-cover border-2 border-border"
+                    onError={(e) => {
+                      e.currentTarget.src = "https://via.placeholder.com/80?text=Invalid";
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+            
+            <Button
+              onClick={handleUpdateProfile}
+              disabled={saving}
+              className="w-full sm:w-auto"
+            >
+              {saving ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Currency Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Currency Preference
+            </CardTitle>
+            <CardDescription>
+              Choose your preferred currency for displaying subscription costs
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="currency">Currency</Label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger id="currency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((curr) => (
+                    <SelectItem key={curr.code} value={curr.code}>
+                      {curr.symbol} {curr.code} - {curr.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <Button
+              onClick={handleUpdateProfile}
+              disabled={saving}
+              className="w-full sm:w-auto"
+            >
+              {saving ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Currency
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Separator />
+
+        {/* Password Change */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Change Password
+            </CardTitle>
+            <CardDescription>
+              Update your password to keep your account secure
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">Current Password</Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter current password"
+                autoComplete="off"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password (min 8 characters)"
+                autoComplete="off"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                autoComplete="off"
+              />
+            </div>
+            
+            <Button
+              onClick={handleUpdatePassword}
+              disabled={savingPassword}
+              variant="secondary"
+              className="w-full sm:w-auto"
+            >
+              {savingPassword ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Lock className="h-4 w-4 mr-2" />
+                  Update Password
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1760798098944,
+      "tag": "0000_clear_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1760798411152,
+      "tag": "0001_bright_bloodstrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1760798707415,
+      "tag": "0002_gray_darkstar",
+      "breakpoints": true
+    }
+  ]
+}
