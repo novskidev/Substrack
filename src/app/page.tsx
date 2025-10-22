@@ -29,6 +29,7 @@ import SubscriptionCard from "@/components/SubscriptionCard";
 import SubscriptionDialog from "@/components/SubscriptionDialog";
 import { CURRENCIES } from "@/constants/currencies";
 import { getBearerToken } from "@/lib/auth-token";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface Subscription {
   id: number;
@@ -217,7 +218,7 @@ export default function Home() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold tracking-tight">
-              Subscription Dashboard
+              Substracker Dashboard
             </h1>
             <p className="text-muted-foreground mt-2">
               Manage and track all your subscriptions in one place
@@ -259,6 +260,7 @@ export default function Home() {
               <Plus className="h-4 w-4 mr-2" />
               Add Subscription
             </Button>
+            <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon">

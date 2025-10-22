@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -45,19 +45,35 @@ export default function SubscriptionDialog({
   subscription,
   onSuccess,
 }: SubscriptionDialogProps) {
-  const [formData, setFormData] = useState({
-    name: subscription?.name || "",
-    cost: subscription?.cost?.toString() || "",
-    billingCycle: subscription?.billingCycle || "monthly",
-    nextPaymentDate: subscription?.nextPaymentDate
-      ? new Date(subscription.nextPaymentDate).toISOString().split("T")[0]
-      : new Date().toISOString().split("T")[0],
-    category: subscription?.category || "other",
-    description: subscription?.description || "",
-    status: subscription?.status || "active",
-  });
+  const createFormState = useCallback((sub?: Subscription | null) => {
+    return {
+      name: sub?.name || "",
+      cost:
+        sub?.cost !== undefined && sub?.cost !== null
+          ? sub.cost.toString()
+          : "",
+      billingCycle: sub?.billingCycle || "monthly",
+      nextPaymentDate: sub?.nextPaymentDate
+        ? new Date(sub.nextPaymentDate).toISOString().split("T")[0]
+        : new Date().toISOString().split("T")[0],
+      category: sub?.category || "",
+      description: sub?.description || "",
+      status: sub?.status || "active",
+    };
+  }, []);
+
+  const [formData, setFormData] = useState(() => createFormState(subscription));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setError("");
+    if (subscription) {
+      setFormData(createFormState(subscription));
+    } else if (open) {
+      setFormData(createFormState());
+    }
+  }, [subscription, open, createFormState]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,15 +105,7 @@ export default function SubscriptionDialog({
 
       onSuccess();
       onOpenChange(false);
-      setFormData({
-        name: "",
-        cost: "",
-        billingCycle: "monthly",
-        nextPaymentDate: new Date().toISOString().split("T")[0],
-        category: "other",
-        description: "",
-        status: "active",
-      });
+      setFormData(createFormState());
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -173,23 +181,14 @@ export default function SubscriptionDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="category">Category</Label>
-                <Select
+                <Input
+                  id="category"
                   value={formData.category}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, category: value })
+                  onChange={(e) =>
+                    setFormData({ ...formData, category: e.target.value })
                   }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="streaming">Streaming</SelectItem>
-                    <SelectItem value="software">Software</SelectItem>
-                    <SelectItem value="cloud">Cloud</SelectItem>
-                    <SelectItem value="domain">Domain</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
+                  placeholder="e.g. Streaming, SaaS, Utilities"
+                />
               </div>
 
               <div className="grid gap-2">
