@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
@@ -63,6 +64,7 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
   
   // Profile form state
   const [name, setName] = useState("");
@@ -86,22 +88,52 @@ export default function SettingsPage() {
   const fetchProfile = async () => {
     try {
       setLoading(true);
+      setProfileError(null);
       const token = localStorage.getItem("bearer_token");
-      const response = await fetch("/api/profile", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const headers: Record<string, string> = {};
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch("/api/profile", { headers });
+
+      if (!response.ok) {
+        let message = "Failed to load profile";
+
+        try {
+          const errorBody = await response.json();
+          if (errorBody?.error) {
+            message = errorBody.error;
+          }
+        } catch {
+          // Ignore JSON parsing issues and fall back to default message.
+        }
+
+        if (response.status === 401) {
+          message = "Session expired. Please sign in again.";
+          toast.error(message);
+          setProfileError(message);
+          router.push("/login");
+          return;
+        }
+
+        setProfileError(message);
+        toast.error(message);
+        return;
+      }
       
-      if (!response.ok) throw new Error("Failed to fetch profile");
-      
-      const data = await response.json();
+      const data: ProfileData = await response.json();
       setProfile(data);
       setName(data.name);
       setImage(data.image || "");
       setCurrency(data.currency);
+      setProfileError(null);
     } catch (error) {
-      toast.error("Failed to load profile");
+      const message =
+        error instanceof Error ? error.message : "Failed to load profile";
+      setProfileError(message);
+      toast.error(message);
       console.error(error);
     } finally {
       setLoading(false);
@@ -114,45 +146,108 @@ export default function SettingsPage() {
     }
   }, [session]);
 
+  // Use session data as an immediate fallback while profile data loads.
+  useEffect(() => {
+    if (session?.user) {
+      setName(session.user.name ?? "");
+      setImage(session.user.image ?? "");
+      setCurrency(session.user.currency ?? "USD");
+    }
+  }, [session]);
+
+  const fallbackProfile: ProfileData | null = session?.user
+    ? {
+        id: session.user.id,
+        name: session.user.name ?? "",
+        email: session.user.email ?? "",
+        image: session.user.image ?? null,
+        currency: session.user.currency ?? "USD",
+      }
+    : null;
+
+  const currentProfile = profile ?? fallbackProfile;
+
   // Update profile
   const handleUpdateProfile = async () => {
+    if (!session?.user) {
+      toast.error("You must be signed in to update your profile.");
+      return;
+    }
+
+    const baselineName = profile?.name ?? session.user.name ?? "";
+    const baselineImage = profile?.image ?? session.user.image ?? "";
+    const baselineCurrency =
+      profile?.currency ?? session.user.currency ?? "USD";
+
+    const updates: { name?: string; image?: string | null; currency?: string } =
+      {};
+
+    if (name !== baselineName) {
+      updates.name = name;
+    }
+    if (image !== baselineImage) {
+      updates.image = image.trim() === "" ? null : image;
+    }
+    if (currency !== baselineCurrency) {
+      updates.currency = currency;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      toast.info("No changes to save");
+      return;
+    }
+
     try {
       setSaving(true);
       const token = localStorage.getItem("bearer_token");
-      
-      const updates: { name?: string; image?: string | null; currency?: string } = {};
-      
-      if (name !== profile?.name) updates.name = name;
-      if (image !== (profile?.image || "")) {
-        updates.image = image.trim() === "" ? null : image;
-      }
-      if (currency !== profile?.currency) updates.currency = currency;
-      
-      if (Object.keys(updates).length === 0) {
-        toast.info("No changes to save");
-        return;
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
       }
       
       const response = await fetch("/api/profile", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify(updates),
       });
-      
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to update profile");
+        let message = "Failed to update profile";
+
+        try {
+          const errorBody = await response.json();
+          if (errorBody?.error) {
+            message = errorBody.error;
+          }
+        } catch {
+          // Ignore parse errors and use default message.
+        }
+
+        if (response.status === 401) {
+          message = "Session expired. Please sign in again.";
+          toast.error(message);
+          router.push("/login");
+          return;
+        }
+
+        throw new Error(message);
       }
-      
+
       const updatedProfile = await response.json();
       setProfile(updatedProfile);
+      setName(updatedProfile.name);
+      setImage(updatedProfile.image || "");
+      setCurrency(updatedProfile.currency);
+      setProfileError(null);
       await refetch(); // Refresh session to update user data in header
       toast.success("Profile updated successfully");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to update profile");
+      const message =
+        error instanceof Error ? error.message : "Failed to update profile";
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -178,13 +273,17 @@ export default function SettingsPage() {
     try {
       setSavingPassword(true);
       const token = localStorage.getItem("bearer_token");
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
       
       const response = await fetch("/api/profile/password", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify({
           currentPassword,
           newPassword,
@@ -192,8 +291,25 @@ export default function SettingsPage() {
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to update password");
+        if (response.status === 401) {
+          const message = "Session expired. Please sign in again.";
+          toast.error(message);
+          router.push("/login");
+          return;
+        }
+
+        let message = "Failed to update password";
+
+        try {
+          const errorBody = await response.json();
+          if (errorBody?.error) {
+            message = errorBody.error;
+          }
+        } catch {
+          // Ignore parse errors and use default message.
+        }
+
+        throw new Error(message);
       }
       
       toast.success("Password updated successfully");
@@ -207,7 +323,7 @@ export default function SettingsPage() {
     }
   };
 
-  if (isPending || loading) {
+  if ((isPending && !session?.user) || (loading && !currentProfile)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -218,7 +334,7 @@ export default function SettingsPage() {
     );
   }
 
-  if (!session?.user || !profile) {
+  if (!session?.user) {
     return null;
   }
 
@@ -226,6 +342,14 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-background">
       <Toaster />
       <div className="container mx-auto p-6 max-w-4xl space-y-8">
+        {profileError && (
+          <Alert variant="destructive">
+            <AlertTitle>Unable to load profile details</AlertTitle>
+            <AlertDescription>
+              <p>{profileError}</p>
+            </AlertDescription>
+          </Alert>
+        )}
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button
@@ -269,7 +393,7 @@ export default function SettingsPage() {
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
-                value={profile.email}
+                value={currentProfile?.email ?? ""}
                 disabled
                 className="bg-muted"
               />
