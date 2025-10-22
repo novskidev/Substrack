@@ -162,6 +162,9 @@ export default function ExpenseChart({
         },
       },
     },
+    layout: {
+      padding: { top: 8, bottom: 8, left: 8, right: 8 },
+    },
   };
 
   const pieOptions = {
@@ -199,14 +202,18 @@ export default function ExpenseChart({
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 lg:grid-cols-2">
       <Card>
         <CardHeader>
           <CardTitle>Monthly Expenses by Service</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[300px]">
-            <Bar data={barData} options={barOptions} />
+          <div className="h-[180px] sm:h-[320px]">
+            <div className="h-full w-full overflow-x-auto sm:overflow-visible">
+              <div className="relative h-full min-w-[240px] sm:min-w-0">
+                <Bar data={barData} options={barOptions} />
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -216,8 +223,10 @@ export default function ExpenseChart({
           <CardTitle>Expenses by Category</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[300px] flex items-center justify-center">
-            <Pie data={pieData} options={pieOptions} />
+          <div className="flex h-[180px] w-full items-center justify-center sm:h-[320px]">
+            <div className="relative h-full w-full max-w-[220px] sm:max-w-none">
+              <Pie data={pieData} options={pieOptions} />
+            </div>
           </div>
         </CardContent>
       </Card>

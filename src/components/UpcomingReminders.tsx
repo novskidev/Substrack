@@ -101,7 +101,7 @@ export default function UpcomingReminders({
                 return (
                   <div
                     key={sub.id}
-                    className="flex items-center justify-between p-3 border border-destructive/50 rounded-lg bg-destructive/5"
+                    className="flex flex-col gap-2 rounded-lg border border-destructive/50 bg-destructive/5 p-3 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex-1">
                       <p className="font-medium">{sub.name}</p>
@@ -109,7 +109,7 @@ export default function UpcomingReminders({
                         {formatCurrency(sub.cost, currency)} / {sub.billingCycle}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right">
                       <Badge variant="destructive" className="mb-1">
                         Overdue
                       </Badge>
@@ -131,7 +131,7 @@ export default function UpcomingReminders({
                 return (
                   <div
                     key={sub.id}
-                    className={`flex items-center justify-between p-3 border rounded-lg ${
+                    className={`flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between ${
                       isDueSoon
                         ? "border-orange-500/50 bg-orange-500/5"
                         : "border-border bg-card"
@@ -143,7 +143,7 @@ export default function UpcomingReminders({
                         {formatCurrency(sub.cost, currency)} / {sub.billingCycle}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right">
                       {isDueSoon ? (
                         <Badge
                           variant="secondary"

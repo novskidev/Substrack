@@ -94,11 +94,13 @@ export default function SubscriptionCard({
   return (
     <>
       <Card className="hover:shadow-md transition-shadow">
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
+        <CardHeader className="pb-3 sm:pb-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-lg">{subscription.name}</h3>
+                <h3 className="text-base font-semibold sm:text-lg">
+                  {subscription.name}
+                </h3>
                 {subscription.status === "cancelled" && (
                   <Badge variant="secondary" className="text-xs">
                     Cancelled
@@ -114,7 +116,7 @@ export default function SubscriptionCard({
                 </Badge>
               )}
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1 self-end sm:self-auto">
               <Button
                 variant="ghost"
                 size="icon"
@@ -134,16 +136,18 @@ export default function SubscriptionCard({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center gap-2 text-2xl font-bold">
-            <span>{formatCurrency(subscription.cost, currency)}</span>
+        <CardContent className="space-y-3 sm:space-y-4">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xl font-bold sm:text-2xl">
+            <span className="leading-tight text-lg sm:text-2xl">
+              {formatCurrency(subscription.cost, currency)}
+            </span>
             <span className="text-sm font-normal text-muted-foreground">
               / {subscription.billingCycle}
             </span>
           </div>
 
           <div
-            className={`flex items-center gap-2 text-sm ${
+            className={`flex flex-wrap items-center gap-2 text-xs sm:text-sm ${
               isOverdue
                 ? "text-destructive"
                 : isDueSoon

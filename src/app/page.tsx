@@ -2,7 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, RefreshCw, LogOut, User, Settings, Loader2 } from "lucide-react";
+import {
+  Plus,
+  RefreshCw,
+  LogOut,
+  User,
+  Settings,
+  Loader2,
+  Menu,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
@@ -30,6 +38,15 @@ import SubscriptionDialog from "@/components/SubscriptionDialog";
 import { CURRENCIES } from "@/constants/currencies";
 import { getBearerToken } from "@/lib/auth-token";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import {
+  Sheet,
+  SheetTrigger,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetClose,
+} from "@/components/ui/sheet";
 
 interface Subscription {
   id: number;
@@ -213,25 +230,21 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <Toaster />
-      <div className="container mx-auto p-6 space-y-8">
+      <div className="container mx-auto px-4 py-6 space-y-8 sm:px-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight">
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
               Substracker Dashboard
             </h1>
             <p className="text-muted-foreground mt-2">
               Manage and track all your subscriptions in one place
             </p>
           </div>
-          <div className="flex gap-2 items-center">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={fetchSubscriptions}
-              title="Refresh"
-            >
-              <RefreshCw className="h-4 w-4" />
+          <div className="hidden flex-wrap items-center gap-2 lg:flex">
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Subscription
             </Button>
             <Select
               value={currency}
@@ -256,9 +269,13 @@ export default function Home() {
                 ))}
               </SelectContent>
             </Select>
-            <Button onClick={() => setDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Subscription
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={fetchSubscriptions}
+              title="Refresh"
+            >
+              <RefreshCw className="h-4 w-4" />
             </Button>
             <ThemeToggle />
             <DropdownMenu>
@@ -286,6 +303,100 @@ export default function Home() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+          <div className="flex items-center justify-end lg:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" aria-label="Open menu">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right">
+                <SheetHeader>
+                  <SheetTitle>Quick Actions</SheetTitle>
+                  <SheetDescription>
+                    Manage subscriptions and preferences
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="flex flex-col gap-4 px-4 pb-6">
+                  <div className="rounded-lg border p-4">
+                    <p className="text-sm font-medium">{session.user.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {session.user.email}
+                    </p>
+                  </div>
+                  <SheetClose asChild>
+                    <Button onClick={() => setDialogOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Subscription
+                    </Button>
+                  </SheetClose>
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium uppercase text-muted-foreground">
+                      Currency
+                    </p>
+                    <Select
+                      value={currency}
+                      onValueChange={handleCurrencyChange}
+                      disabled={updatingCurrency}
+                    >
+                      <SelectTrigger className="w-full">
+                        {updatingCurrency ? (
+                          <span className="flex items-center gap-2 text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Updating...
+                          </span>
+                        ) : (
+                          <SelectValue placeholder="Select currency" />
+                        )}
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CURRENCIES.map((curr) => (
+                          <SelectItem key={curr.code} value={curr.code}>
+                            {curr.symbol} {curr.code} - {curr.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <SheetClose asChild>
+                      <Button
+                        variant="outline"
+                        className="justify-start gap-2 sm:flex-1"
+                        onClick={fetchSubscriptions}
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        Refresh
+                      </Button>
+                    </SheetClose>
+                    <ThemeToggle className="sm:flex-1" showLabel />
+                  </div>
+                  <div className="grid gap-2">
+                    <SheetClose asChild>
+                      <Button
+                        variant="outline"
+                        className="justify-start gap-2"
+                        onClick={() => router.push("/settings")}
+                      >
+                        <Settings className="h-4 w-4" />
+                        Settings
+                      </Button>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Button
+                        variant="destructive"
+                        className="justify-start gap-2"
+                        onClick={handleSignOut}
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Sign Out
+                      </Button>
+                    </SheetClose>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
 
         {error && (
@@ -304,7 +415,7 @@ export default function Home() {
         <ExpenseChart subscriptions={subscriptions} currency={currency} />
 
         {/* Two Column Layout */}
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {/* Reminders */}
           <div className="lg:col-span-1">
             <UpcomingReminders
