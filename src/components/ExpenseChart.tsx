@@ -46,6 +46,23 @@ export default function ExpenseChart({
     (sub) => sub.status === "active"
   );
 
+  const generateColorPalette = (count: number) => {
+    if (count <= 0) {
+      return { backgroundColors: [], borderColors: [] };
+    }
+
+    const backgroundColors: string[] = [];
+    const borderColors: string[] = [];
+
+    for (let i = 0; i < count; i++) {
+      const hue = Math.round((360 / count) * i);
+      backgroundColors.push(`hsla(${hue}, 70%, 60%, 0.8)`);
+      borderColors.push(`hsla(${hue}, 70%, 45%, 1)`);
+    }
+
+    return { backgroundColors, borderColors };
+  };
+
   const convertToMonthly = (cost: number, cycle: string) => {
     if (cycle === "monthly") return cost;
     if (cycle === "yearly") return cost / 12;
@@ -100,6 +117,9 @@ export default function ExpenseChart({
     .slice(0, 10);
 
   const formatter = getCurrencyFormatter(currency);
+  const { backgroundColors, borderColors } = generateColorPalette(
+    sortedSubscriptions.length
+  );
 
   const barData = {
     labels: sortedSubscriptions.map((sub) => sub.name),
@@ -109,8 +129,8 @@ export default function ExpenseChart({
         data: sortedSubscriptions.map((sub) =>
           convertToMonthly(sub.cost, sub.billingCycle)
         ),
-        backgroundColor: "rgba(147, 51, 234, 0.8)",
-        borderColor: "rgba(147, 51, 234, 1)",
+        backgroundColor: backgroundColors,
+        borderColor: borderColors,
         borderWidth: 2,
       },
     ],

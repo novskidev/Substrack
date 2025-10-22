@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, DollarSign, Edit2, Trash2 } from "lucide-react";
+import { Calendar, Edit2, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -136,7 +136,6 @@ export default function SubscriptionCard({
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center gap-2 text-2xl font-bold">
-            <DollarSign className="h-5 w-5 text-muted-foreground" />
             <span>{formatCurrency(subscription.cost, currency)}</span>
             <span className="text-sm font-normal text-muted-foreground">
               / {subscription.billingCycle}

@@ -153,17 +153,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate category if provided
-    if (category) {
-      const validCategories = ['streaming', 'cloud', 'domain', 'software', 'other'];
-      if (!validCategories.includes(category)) {
-        return NextResponse.json({ 
-          error: "Category must be one of: streaming, cloud, domain, software, other",
-          code: "INVALID_CATEGORY" 
-        }, { status: 400 });
-      }
-    }
-
     // Prepare insert data
     const now = new Date().toISOString();
     const insertData: any = {
@@ -176,8 +165,11 @@ export async function POST(request: NextRequest) {
       updatedAt: now,
     };
 
-    if (category) {
-      insertData.category = category.trim();
+    if (typeof category === 'string') {
+      const trimmedCategory = category.trim();
+      if (trimmedCategory !== '') {
+        insertData.category = trimmedCategory;
+      }
     }
 
     if (description) {
@@ -275,14 +267,7 @@ export async function PUT(request: NextRequest) {
     }
 
     if (category !== undefined) {
-      if (category !== null && category !== '') {
-        const validCategories = ['streaming', 'cloud', 'domain', 'software', 'other'];
-        if (!validCategories.includes(category)) {
-          return NextResponse.json({ 
-            error: "Category must be one of: streaming, cloud, domain, software, other",
-            code: "INVALID_CATEGORY" 
-          }, { status: 400 });
-        }
+      if (category !== null && category.trim() !== '') {
         updates.category = category.trim();
       } else {
         updates.category = null;
