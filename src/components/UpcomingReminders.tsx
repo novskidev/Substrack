@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Clock, Calendar } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { formatCurrency } from "@/lib/currency";
 
 interface Subscription {
   id: number;
@@ -16,10 +17,12 @@ interface Subscription {
 
 interface UpcomingRemindersProps {
   subscriptions: Subscription[];
+  currency: string;
 }
 
 export default function UpcomingReminders({
   subscriptions,
+  currency,
 }: UpcomingRemindersProps) {
   const getDaysUntilPayment = (dateString: string) => {
     const today = new Date();
@@ -103,7 +106,7 @@ export default function UpcomingReminders({
                     <div className="flex-1">
                       <p className="font-medium">{sub.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        ${sub.cost.toFixed(2)} / {sub.billingCycle}
+                        {formatCurrency(sub.cost, currency)} / {sub.billingCycle}
                       </p>
                     </div>
                     <div className="text-right">
@@ -137,7 +140,7 @@ export default function UpcomingReminders({
                     <div className="flex-1">
                       <p className="font-medium">{sub.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        ${sub.cost.toFixed(2)} / {sub.billingCycle}
+                        {formatCurrency(sub.cost, currency)} / {sub.billingCycle}
                       </p>
                     </div>
                     <div className="text-right">

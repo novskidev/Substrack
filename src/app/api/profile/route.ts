@@ -10,9 +10,18 @@ const VALID_CURRENCIES = [
   'MYR', 'PHP', 'CZK', 'ILS', 'CLP', 'PKR', 'EGP', 'VND'
 ];
 
+function extractSessionToken(rawToken: string | null | undefined) {
+  if (!rawToken) return null;
+  const [token] = rawToken.split(".");
+  return token ?? rawToken;
+}
+
 async function authenticateRequest(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
-  const token = authHeader?.replace('Bearer ', '') || request.cookies.get('better-auth.session_token')?.value;
+  const rawToken =
+    authHeader?.replace('Bearer ', '') ??
+    request.cookies.get('better-auth.session_token')?.value;
+  const token = extractSessionToken(rawToken);
   
   if (!token) {
     return { error: NextResponse.json({ error: 'Unauthorized', code: 'NO_TOKEN' }, { status: 401 }) };

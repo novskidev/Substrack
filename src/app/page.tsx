@@ -2,11 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, RefreshCw, LogOut, User, Settings } from "lucide-react";
+import { Plus, RefreshCw, LogOut, User, Settings, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { authClient, useSession } from "@/lib/auth-client";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +27,8 @@ import ExpenseChart from "@/components/ExpenseChart";
 import UpcomingReminders from "@/components/UpcomingReminders";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import SubscriptionDialog from "@/components/SubscriptionDialog";
+import { CURRENCIES } from "@/constants/currencies";
+import { getBearerToken } from "@/lib/auth-token";
 
 interface Subscription {
   id: number;
@@ -41,6 +50,8 @@ export default function Home() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSubscription, setEditingSubscription] =
     useState<Subscription | null>(null);
+  const [currency, setCurrency] = useState("USD");
+  const [updatingCurrency, setUpdatingCurrency] = useState(false);
 
   // Protect route - redirect to login if not authenticated
   useEffect(() => {
@@ -65,9 +76,27 @@ export default function Home() {
     }
   };
 
+  const fetchUserCurrency = async () => {
+    try {
+      const response = await fetch("/api/profile");
+      if (!response.ok) {
+        return;
+      }
+
+      const profile = await response.json();
+      if (profile?.currency) {
+        setCurrency(profile.currency);
+      }
+    } catch (err) {
+      console.error("Failed to load user currency", err);
+    }
+  };
+
   useEffect(() => {
     if (session?.user) {
+      setCurrency(session.user.currency ?? "USD");
       fetchSubscriptions();
+      fetchUserCurrency();
     }
   }, [session]);
 
@@ -114,6 +143,44 @@ export default function Home() {
         : "Subscription added successfully"
     );
     fetchSubscriptions();
+  };
+
+  const handleCurrencyChange = async (value: string) => {
+    if (!session?.user || value === currency) {
+      return;
+    }
+
+    const token = getBearerToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    try {
+      setUpdatingCurrency(true);
+      setCurrency(value);
+
+      const response = await fetch("/api/profile", {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ currency: value }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update currency");
+      }
+
+      toast.success("Currency updated");
+      await refetch();
+    } catch (err) {
+      toast.error("Could not update currency");
+      await fetchUserCurrency();
+    } finally {
+      setUpdatingCurrency(false);
+    }
   };
 
   if (isPending) {
@@ -165,6 +232,29 @@ export default function Home() {
             >
               <RefreshCw className="h-4 w-4" />
             </Button>
+            <Select
+              value={currency}
+              onValueChange={handleCurrencyChange}
+              disabled={updatingCurrency}
+            >
+              <SelectTrigger className="w-[200px]">
+                {updatingCurrency ? (
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Updating...
+                  </span>
+                ) : (
+                  <SelectValue placeholder="Select currency" />
+                )}
+              </SelectTrigger>
+              <SelectContent>
+                {CURRENCIES.map((curr) => (
+                  <SelectItem key={curr.code} value={curr.code}>
+                    {curr.symbol} {curr.code} - {curr.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button onClick={() => setDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Add Subscription
@@ -203,16 +293,22 @@ export default function Home() {
         )}
 
         {/* Stats Overview */}
-        <DashboardStats subscriptions={subscriptions} />
+        <DashboardStats
+          subscriptions={subscriptions}
+          currency={currency}
+        />
 
         {/* Charts */}
-        <ExpenseChart subscriptions={subscriptions} />
+        <ExpenseChart subscriptions={subscriptions} currency={currency} />
 
         {/* Two Column Layout */}
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Reminders */}
           <div className="lg:col-span-1">
-            <UpcomingReminders subscriptions={subscriptions} />
+            <UpcomingReminders
+              subscriptions={subscriptions}
+              currency={currency}
+            />
           </div>
 
           {/* Subscriptions List */}
@@ -236,6 +332,7 @@ export default function Home() {
                     subscription={subscription}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    currency={currency}
                   />
                 ))}
               </div>

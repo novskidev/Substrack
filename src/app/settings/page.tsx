@@ -24,30 +24,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
-import { ArrowLeft, RefreshCw, Save, Lock, User, Image, DollarSign } from "lucide-react";
-
-const CURRENCIES = [
-  { code: "USD", name: "US Dollar", symbol: "$" },
-  { code: "EUR", name: "Euro", symbol: "€" },
-  { code: "GBP", name: "British Pound", symbol: "£" },
-  { code: "JPY", name: "Japanese Yen", symbol: "¥" },
-  { code: "IDR", name: "Indonesian Rupiah", symbol: "Rp" },
-  { code: "CAD", name: "Canadian Dollar", symbol: "CA$" },
-  { code: "AUD", name: "Australian Dollar", symbol: "A$" },
-  { code: "CHF", name: "Swiss Franc", symbol: "CHF" },
-  { code: "CNY", name: "Chinese Yuan", symbol: "¥" },
-  { code: "INR", name: "Indian Rupee", symbol: "₹" },
-  { code: "MXN", name: "Mexican Peso", symbol: "MX$" },
-  { code: "BRL", name: "Brazilian Real", symbol: "R$" },
-  { code: "ZAR", name: "South African Rand", symbol: "R" },
-  { code: "SEK", name: "Swedish Krona", symbol: "kr" },
-  { code: "SGD", name: "Singapore Dollar", symbol: "S$" },
-  { code: "HKD", name: "Hong Kong Dollar", symbol: "HK$" },
-  { code: "KRW", name: "South Korean Won", symbol: "₩" },
-  { code: "MYR", name: "Malaysian Ringgit", symbol: "RM" },
-  { code: "THB", name: "Thai Baht", symbol: "฿" },
-  { code: "PHP", name: "Philippine Peso", symbol: "₱" },
-];
+import { ArrowLeft, RefreshCw, Save, Lock, User, Image as ImageIcon, DollarSign } from "lucide-react";
+import { CURRENCIES } from "@/constants/currencies";
+import { getBearerToken } from "@/lib/auth-token";
 
 interface ProfileData {
   id: string;
@@ -89,7 +68,7 @@ export default function SettingsPage() {
     try {
       setLoading(true);
       setProfileError(null);
-      const token = localStorage.getItem("bearer_token");
+      const token = getBearerToken();
       const headers: Record<string, string> = {};
 
       if (token) {
@@ -199,7 +178,7 @@ export default function SettingsPage() {
 
     try {
       setSaving(true);
-      const token = localStorage.getItem("bearer_token");
+      const token = getBearerToken();
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -272,7 +251,7 @@ export default function SettingsPage() {
     
     try {
       setSavingPassword(true);
-      const token = localStorage.getItem("bearer_token");
+      const token = getBearerToken();
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -404,7 +383,7 @@ export default function SettingsPage() {
             
             <div className="space-y-2">
               <Label htmlFor="image" className="flex items-center gap-2">
-                <Image className="h-4 w-4" />
+                <ImageIcon className="h-4 w-4" aria-hidden="true" />
                 Profile Picture URL
               </Label>
               <Input

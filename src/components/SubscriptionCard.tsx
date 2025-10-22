@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
+import { formatCurrency } from "@/lib/currency";
 
 interface Subscription {
   id: number;
@@ -31,12 +32,14 @@ interface SubscriptionCardProps {
   subscription: Subscription;
   onEdit: (subscription: Subscription) => void;
   onDelete: (id: number) => void;
+  currency: string;
 }
 
 export default function SubscriptionCard({
   subscription,
   onEdit,
   onDelete,
+  currency,
 }: SubscriptionCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -134,7 +137,7 @@ export default function SubscriptionCard({
         <CardContent className="space-y-3">
           <div className="flex items-center gap-2 text-2xl font-bold">
             <DollarSign className="h-5 w-5 text-muted-foreground" />
-            <span>${subscription.cost.toFixed(2)}</span>
+            <span>{formatCurrency(subscription.cost, currency)}</span>
             <span className="text-sm font-normal text-muted-foreground">
               / {subscription.billingCycle}
             </span>

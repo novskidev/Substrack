@@ -1,8 +1,18 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from "chart.js";
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+} from "chart.js";
 import { Pie, Bar } from "react-chartjs-2";
+import { getCurrencyFormatter } from "@/lib/currency";
 
 ChartJS.register(
   ArcElement,
@@ -25,9 +35,13 @@ interface Subscription {
 
 interface ExpenseChartProps {
   subscriptions: Subscription[];
+  currency: string;
 }
 
-export default function ExpenseChart({ subscriptions }: ExpenseChartProps) {
+export default function ExpenseChart({
+  subscriptions,
+  currency,
+}: ExpenseChartProps) {
   const activeSubscriptions = subscriptions.filter(
     (sub) => sub.status === "active"
   );
@@ -85,6 +99,8 @@ export default function ExpenseChart({ subscriptions }: ExpenseChartProps) {
     })
     .slice(0, 10);
 
+  const formatter = getCurrencyFormatter(currency);
+
   const barData = {
     labels: sortedSubscriptions.map((sub) => sub.name),
     datasets: [
@@ -116,7 +132,12 @@ export default function ExpenseChart({ subscriptions }: ExpenseChartProps) {
         beginAtZero: true,
         ticks: {
           callback: function (value: number | string) {
-            return "$" + value;
+            const numericValue =
+              typeof value === "number" ? value : Number(value);
+            if (Number.isNaN(numericValue)) {
+              return value;
+            }
+            return formatter.format(numericValue);
           },
         },
       },
@@ -135,7 +156,7 @@ export default function ExpenseChart({ subscriptions }: ExpenseChartProps) {
           label: function (context: any) {
             const label = context.label || "";
             const value = context.parsed || 0;
-            return label + ": $" + value.toFixed(2);
+            return `${label}: ${formatter.format(value)}`;
           },
         },
       },

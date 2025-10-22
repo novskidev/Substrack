@@ -4,19 +4,20 @@ import { createAuthClient } from "better-auth/react"
 import { useEffect, useState } from "react"
 
 export const authClient = createAuthClient({
-   baseURL: typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL,
+  baseURL:
+    typeof window !== "undefined"
+      ? window.location.origin
+      : process.env.NEXT_PUBLIC_SITE_URL,
   fetchOptions: {
-      headers: {
-        Authorization: `Bearer ${typeof window !== 'undefined' ? localStorage.getItem("bearer_token") : ""}`,
-      },
-      onSuccess: (ctx) => {
-          const authToken = ctx.response.headers.get("set-auth-token")
-          // Store the token securely (e.g., in localStorage)
-          if(authToken){
-            localStorage.setItem("bearer_token", authToken);
-          }
+    credentials: "include",
+    onSuccess: (ctx) => {
+      const authToken = ctx.response.headers.get("set-auth-token");
+      if (authToken && typeof window !== "undefined") {
+        const [token] = authToken.split(".");
+        localStorage.setItem("bearer_token", token ?? authToken);
       }
-  }
+    },
+  },
 });
 
 type SessionData = ReturnType<typeof authClient.useSession>
