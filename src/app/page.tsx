@@ -37,7 +37,7 @@ import { CURRENCIES } from "@/constants/currencies";
 import { getBearerToken } from "@/lib/auth-token";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import type { SubscriptionStatusValue } from "@/constants/subscription-statuses";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -72,6 +72,7 @@ export default function Home() {
   const [currency, setCurrency] = useState("USD");
   const [updatingCurrency, setUpdatingCurrency] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
   const pathname = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
   const isDarkMode = resolvedTheme === "dark";
@@ -140,6 +141,9 @@ export default function Home() {
       if (profile?.currency) {
         setCurrency(profile.currency);
       }
+      if (profile && "image" in profile) {
+        setProfileImage(profile.image ?? null);
+      }
     } catch (err) {
       console.error("Failed to load user currency", err);
     }
@@ -148,8 +152,11 @@ export default function Home() {
   useEffect(() => {
     if (session?.user) {
       setCurrency(session.user.currency ?? "USD");
+      setProfileImage(session.user.image ?? null);
       fetchSubscriptions();
       fetchUserCurrency();
+    } else {
+      setProfileImage(null);
     }
   }, [session]);
 
@@ -286,6 +293,12 @@ export default function Home() {
                 )}
               >
                 <Avatar className="h-12 w-12">
+                  {profileImage ? (
+                    <AvatarImage
+                      src={profileImage}
+                      alt={session.user.name ?? "Profile picture"}
+                    />
+                  ) : null}
                   <AvatarFallback className="text-base font-medium">
                     {userInitials}
                   </AvatarFallback>

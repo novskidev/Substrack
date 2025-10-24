@@ -10,6 +10,8 @@ const VALID_CURRENCIES = [
   'MYR', 'PHP', 'CZK', 'ILS', 'CLP', 'PKR', 'EGP', 'VND'
 ];
 
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit to match frontend validation
+
 function extractSessionToken(rawToken: string | null | undefined) {
   if (!rawToken) return null;
   const [token] = rawToken.split(".");
@@ -118,6 +120,42 @@ export async function PATCH(request: NextRequest) {
     if (image !== undefined) {
       if (image === null || image === '') {
         updates.image = null;
+      } else if (typeof image === 'string' && image.startsWith('data:image/')) {
+        const dataUrlMatch = image.match(/^data:image\/[a-zA-Z0-9+.\-]+;base64,/);
+
+        if (!dataUrlMatch) {
+          return NextResponse.json({
+            error: 'Invalid image data URL',
+            code: 'INVALID_IMAGE_DATA_URL'
+          }, { status: 400 });
+        }
+
+        const base64Payload = image.slice(dataUrlMatch[0].length);
+
+        try {
+          const buffer = Buffer.from(base64Payload, 'base64');
+
+          if (buffer.length === 0) {
+            return NextResponse.json({
+              error: 'Image data cannot be empty',
+              code: 'EMPTY_IMAGE_DATA'
+            }, { status: 400 });
+          }
+
+          if (buffer.length > MAX_IMAGE_SIZE_BYTES) {
+            return NextResponse.json({
+              error: 'Image must be 5MB or smaller',
+              code: 'IMAGE_TOO_LARGE'
+            }, { status: 400 });
+          }
+
+          updates.image = image;
+        } catch {
+          return NextResponse.json({
+            error: 'Invalid base64 image data',
+            code: 'INVALID_IMAGE_BASE64'
+          }, { status: 400 });
+        }
       } else {
         try {
           new URL(image);

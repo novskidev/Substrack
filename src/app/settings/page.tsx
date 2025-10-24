@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,8 @@ interface ProfileData {
   currency: string;
 }
 
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+
 export default function SettingsPage() {
   const router = useRouter();
   const { data: session, isPending, refetch } = useSession();
@@ -49,6 +51,7 @@ export default function SettingsPage() {
   const [name, setName] = useState("");
   const [image, setImage] = useState("");
   const [currency, setCurrency] = useState("USD");
+  const [isReadingImage, setIsReadingImage] = useState(false);
   
   // Password form state
   const [currentPassword, setCurrentPassword] = useState("");
@@ -146,8 +149,63 @@ export default function SettingsPage() {
 
   const currentProfile = profile ?? fallbackProfile;
 
+  const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const file = input.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select a valid image file.");
+      input.value = "";
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      toast.error("Image must be 5MB or smaller.");
+      input.value = "";
+      return;
+    }
+
+    setIsReadingImage(true);
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = reader.result;
+
+      if (typeof result === "string") {
+        setImage(result);
+      } else {
+        toast.error("Unsupported image format.");
+      }
+
+      setIsReadingImage(false);
+      input.value = "";
+    };
+
+    reader.onerror = () => {
+      toast.error("Failed to read image file.");
+      setIsReadingImage(false);
+      input.value = "";
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setImage("");
+  };
+
   // Update profile
   const handleUpdateProfile = async () => {
+    if (isReadingImage) {
+      toast.info("Please wait for the image to finish processing.");
+      return;
+    }
+
     if (!session?.user) {
       toast.error("You must be signed in to update your profile.");
       return;
@@ -382,18 +440,22 @@ export default function SettingsPage() {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="image" className="flex items-center gap-2">
+              <Label htmlFor="image-upload" className="flex items-center gap-2">
                 <ImageIcon className="h-4 w-4" aria-hidden="true" />
-                Profile Picture URL
+                Profile Picture
               </Label>
               <Input
-                id="image"
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                placeholder="https://example.com/profile.jpg"
+                id="image-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={isReadingImage}
               />
+              <p className="text-xs text-muted-foreground">
+                PNG, JPG, or GIF up to 5MB.
+              </p>
               {image && (
-                <div className="mt-2">
+                <div className="mt-2 flex items-center gap-4">
                   <img
                     src={image}
                     alt="Profile preview"
@@ -402,13 +464,25 @@ export default function SettingsPage() {
                       e.currentTarget.src = "https://via.placeholder.com/80?text=Invalid";
                     }}
                   />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRemoveImage}
+                    disabled={saving || isReadingImage}
+                  >
+                    Remove
+                  </Button>
                 </div>
+              )}
+              {isReadingImage && (
+                <p className="text-xs text-muted-foreground">Processing image...</p>
               )}
             </div>
             
             <Button
               onClick={handleUpdateProfile}
-              disabled={saving}
+              disabled={saving || isReadingImage}
               className="w-full sm:w-auto"
             >
               {saving ? (
