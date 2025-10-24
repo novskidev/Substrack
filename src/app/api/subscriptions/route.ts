@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { subscriptions } from '@/db/schema';
 import { eq, like, or, and } from 'drizzle-orm';
+import {
+  SUBSCRIPTION_STATUS_OPTIONS,
+  SUBSCRIPTION_STATUS_LABELS,
+  canTransitionSubscriptionStatus,
+  getPermittedStatusOptions,
+  isValidSubscriptionStatus,
+  type SubscriptionStatusValue,
+} from '@/constants/subscription-statuses';
+
+const STATUS_OPTIONS_LABEL = SUBSCRIPTION_STATUS_OPTIONS.map(
+  (option) => option.label
+).join(', ');
+
+const normalizeStatus = (value: string): SubscriptionStatusValue | null => {
+  const normalized = value.trim().toLowerCase();
+  return isValidSubscriptionStatus(normalized) ? normalized : null;
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -55,7 +72,14 @@ export async function GET(request: NextRequest) {
     }
 
     if (status) {
-      conditions.push(eq(subscriptions.status, status));
+      const normalizedStatus = normalizeStatus(status);
+      if (!normalizedStatus) {
+        return NextResponse.json({ 
+          error: `Status must be one of: ${STATUS_OPTIONS_LABEL}`,
+          code: "INVALID_STATUS" 
+        }, { status: 400 });
+      }
+      conditions.push(eq(subscriptions.status, normalizedStatus));
     }
 
     if (category) {
@@ -142,15 +166,23 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Validate status if provided
-    if (status) {
-      const validStatuses = ['active', 'cancelled'];
-      if (!validStatuses.includes(status)) {
+    if (status !== undefined && status !== null && typeof status !== 'string') {
+      return NextResponse.json({ 
+        error: "Status must be a string value",
+        code: "INVALID_STATUS" 
+      }, { status: 400 });
+    }
+
+    let normalizedStatus: SubscriptionStatusValue = 'active';
+    if (typeof status === 'string') {
+      const nextStatus = normalizeStatus(status);
+      if (!nextStatus) {
         return NextResponse.json({ 
-          error: "Status must be one of: active, cancelled",
+          error: `Status must be one of: ${STATUS_OPTIONS_LABEL}`,
           code: "INVALID_STATUS" 
         }, { status: 400 });
       }
+      normalizedStatus = nextStatus;
     }
 
     // Prepare insert data
@@ -160,7 +192,7 @@ export async function POST(request: NextRequest) {
       cost: costValue,
       billingCycle: billingCycle.trim(),
       nextPaymentDate: nextPaymentDate.trim(),
-      status: status ? status.trim() : 'active',
+      status: normalizedStatus,
       createdAt: now,
       updatedAt: now,
     };
@@ -279,14 +311,34 @@ export async function PUT(request: NextRequest) {
     }
 
     if (status !== undefined) {
-      const validStatuses = ['active', 'cancelled'];
-      if (!validStatuses.includes(status)) {
+      if (typeof status !== 'string') {
         return NextResponse.json({ 
-          error: "Status must be one of: active, cancelled",
+          error: "Status must be a string value",
           code: "INVALID_STATUS" 
         }, { status: 400 });
       }
-      updates.status = status.trim();
+      const nextStatus = normalizeStatus(status);
+      if (!nextStatus) {
+        return NextResponse.json({ 
+          error: `Status must be one of: ${STATUS_OPTIONS_LABEL}`,
+          code: "INVALID_STATUS" 
+        }, { status: 400 });
+      }
+      const currentStatus = existing[0].status as SubscriptionStatusValue;
+      if (!canTransitionSubscriptionStatus(currentStatus, nextStatus)) {
+        const allowedStatuses = getPermittedStatusOptions(currentStatus);
+        const allowedTransitionLabels = allowedStatuses
+          .filter((value) => value !== currentStatus)
+          .map((value) => SUBSCRIPTION_STATUS_LABELS[value])
+          .join(', ');
+        const allowedLabelText =
+          allowedTransitionLabels || SUBSCRIPTION_STATUS_LABELS[currentStatus];
+        return NextResponse.json({
+          error: `Status cannot change from ${SUBSCRIPTION_STATUS_LABELS[currentStatus]} to ${SUBSCRIPTION_STATUS_LABELS[nextStatus]}. Allowed next statuses: ${allowedLabelText}`,
+          code: "INVALID_STATUS_TRANSITION"
+        }, { status: 400 });
+      }
+      updates.status = nextStatus;
     }
 
     const updated = await db.update(subscriptions)

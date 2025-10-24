@@ -5,6 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Clock, Calendar } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatCurrency } from "@/lib/currency";
+import {
+  CHARGEABLE_SUBSCRIPTION_STATUSES,
+  type SubscriptionStatusValue,
+} from "@/constants/subscription-statuses";
 
 interface Subscription {
   id: number;
@@ -12,7 +16,7 @@ interface Subscription {
   cost: number;
   billingCycle: string;
   nextPaymentDate: string;
-  status: string;
+  status: SubscriptionStatusValue;
 }
 
 interface UpcomingRemindersProps {
@@ -42,8 +46,8 @@ export default function UpcomingReminders({
     });
   };
 
-  const activeSubscriptions = subscriptions.filter(
-    (sub) => sub.status === "active"
+  const activeSubscriptions = subscriptions.filter((sub) =>
+    CHARGEABLE_SUBSCRIPTION_STATUSES.includes(sub.status)
   );
 
   const overduePayments = activeSubscriptions

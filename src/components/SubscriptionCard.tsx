@@ -16,6 +16,18 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
 import { formatCurrency } from "@/lib/currency";
+import {
+  SUBSCRIPTION_STATUS_LABELS,
+  type SubscriptionStatusValue,
+} from "@/constants/subscription-statuses";
+
+const STATUS_BADGE_STYLES: Record<SubscriptionStatusValue, string> = {
+  active: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  paused: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+  cancelled: "bg-destructive/10 text-destructive",
+  trial: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+  expired: "bg-slate-500/10 text-slate-600 dark:text-slate-400",
+};
 
 interface Subscription {
   id: number;
@@ -25,7 +37,7 @@ interface Subscription {
   nextPaymentDate: string;
   category?: string;
   description?: string;
-  status: string;
+  status: SubscriptionStatusValue;
 }
 
 interface SubscriptionCardProps {
@@ -101,9 +113,12 @@ export default function SubscriptionCard({
                 <h3 className="text-base font-semibold sm:text-lg">
                   {subscription.name}
                 </h3>
-                {subscription.status === "cancelled" && (
-                  <Badge variant="secondary" className="text-xs">
-                    Cancelled
+                {subscription.status !== "active" && (
+                  <Badge
+                    variant="secondary"
+                    className={`text-xs ${STATUS_BADGE_STYLES[subscription.status]}`}
+                  >
+                    {SUBSCRIPTION_STATUS_LABELS[subscription.status]}
                   </Badge>
                 )}
               </div>

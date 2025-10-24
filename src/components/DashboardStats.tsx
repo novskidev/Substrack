@@ -3,6 +3,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, TrendingUp, Calendar, CreditCard } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
+import {
+  CHARGEABLE_SUBSCRIPTION_STATUSES,
+  type SubscriptionStatusValue,
+} from "@/constants/subscription-statuses";
 
 interface Subscription {
   id: number;
@@ -10,7 +14,7 @@ interface Subscription {
   cost: number;
   billingCycle: string;
   nextPaymentDate: string;
-  status: string;
+  status: SubscriptionStatusValue;
 }
 
 interface DashboardStatsProps {
@@ -22,12 +26,12 @@ export default function DashboardStats({
   subscriptions,
   currency,
 }: DashboardStatsProps) {
-  const activeSubscriptions = subscriptions.filter(
-    (sub) => sub.status === "active"
+  const chargeableSubscriptions = subscriptions.filter((sub) =>
+    CHARGEABLE_SUBSCRIPTION_STATUSES.includes(sub.status)
   );
 
   const calculateMonthlyTotal = () => {
-    return activeSubscriptions.reduce((total, sub) => {
+    return chargeableSubscriptions.reduce((total, sub) => {
       if (sub.billingCycle === "monthly") {
         return total + sub.cost;
       } else if (sub.billingCycle === "yearly") {
@@ -40,7 +44,7 @@ export default function DashboardStats({
   };
 
   const calculateYearlyTotal = () => {
-    return activeSubscriptions.reduce((total, sub) => {
+    return chargeableSubscriptions.reduce((total, sub) => {
       if (sub.billingCycle === "monthly") {
         return total + sub.cost * 12;
       } else if (sub.billingCycle === "yearly") {
@@ -56,7 +60,7 @@ export default function DashboardStats({
     const today = new Date();
     const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-    return activeSubscriptions.filter((sub) => {
+    return chargeableSubscriptions.filter((sub) => {
       const paymentDate = new Date(sub.nextPaymentDate);
       return paymentDate >= today && paymentDate <= nextWeek;
     }).length;
@@ -80,7 +84,7 @@ export default function DashboardStats({
         <CardContent>
           <div className="text-2xl font-bold">{monthlyTotalFormatted}</div>
           <p className="text-xs text-muted-foreground">
-            From {activeSubscriptions.length} active subscriptions
+            From {chargeableSubscriptions.length} active or trial subscriptions
           </p>
         </CardContent>
       </Card>
@@ -101,14 +105,14 @@ export default function DashboardStats({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
-            Active Subscriptions
+            Chargeable Subscriptions
           </CardTitle>
           <CreditCard className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{activeSubscriptions.length}</div>
+          <div className="text-2xl font-bold">{chargeableSubscriptions.length}</div>
           <p className="text-xs text-muted-foreground">
-            {subscriptions.length - activeSubscriptions.length} cancelled
+            {subscriptions.length - chargeableSubscriptions.length} other statuses
           </p>
         </CardContent>
       </Card>

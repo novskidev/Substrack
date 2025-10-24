@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  SUBSCRIPTION_STATUS_OPTIONS,
+  getPermittedStatusOptions,
+  type SubscriptionStatusValue,
+} from "@/constants/subscription-statuses";
 
 interface Subscription {
   id: number;
@@ -29,7 +34,7 @@ interface Subscription {
   nextPaymentDate: string;
   category?: string;
   description?: string;
-  status: string;
+  status: SubscriptionStatusValue;
 }
 
 interface SubscriptionDialogProps {
@@ -39,13 +44,23 @@ interface SubscriptionDialogProps {
   onSuccess: () => void;
 }
 
+type SubscriptionFormState = {
+  name: string;
+  cost: string;
+  billingCycle: string;
+  nextPaymentDate: string;
+  category: string;
+  description: string;
+  status: SubscriptionStatusValue;
+};
+
 export default function SubscriptionDialog({
   open,
   onOpenChange,
   subscription,
   onSuccess,
 }: SubscriptionDialogProps) {
-  const createFormState = useCallback((sub?: Subscription | null) => {
+  const createFormState = useCallback((sub?: Subscription | null): SubscriptionFormState => {
     return {
       name: sub?.name || "",
       cost:
@@ -58,11 +73,13 @@ export default function SubscriptionDialog({
         : new Date().toISOString().split("T")[0],
       category: sub?.category || "",
       description: sub?.description || "",
-      status: sub?.status || "active",
+      status: sub?.status ?? "active",
     };
   }, []);
 
-  const [formData, setFormData] = useState(() => createFormState(subscription));
+  const [formData, setFormData] = useState<SubscriptionFormState>(() =>
+    createFormState(subscription)
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -74,6 +91,33 @@ export default function SubscriptionDialog({
       setFormData(createFormState());
     }
   }, [subscription, open, createFormState]);
+
+  const statusOptions = useMemo(() => {
+    if (!subscription) {
+      return SUBSCRIPTION_STATUS_OPTIONS;
+    }
+
+    const allowedStatuses = new Set(
+      getPermittedStatusOptions(subscription.status)
+    );
+
+    return SUBSCRIPTION_STATUS_OPTIONS.filter((option) =>
+      allowedStatuses.has(option.value)
+    );
+  }, [subscription?.status]);
+
+  useEffect(() => {
+    const allowedValues = new Set(statusOptions.map((option) => option.value));
+    if (
+      statusOptions.length > 0 &&
+      !allowedValues.has(formData.status)
+    ) {
+      setFormData((prev) => ({
+        ...prev,
+        status: statusOptions[0].value,
+      }));
+    }
+  }, [statusOptions, formData.status]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,15 +240,21 @@ export default function SubscriptionDialog({
                 <Select
                   value={formData.status}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, status: value })
+                    setFormData({
+                      ...formData,
+                      status: value as SubscriptionStatusValue,
+                    })
                   }
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    {statusOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
